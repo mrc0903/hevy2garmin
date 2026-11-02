@@ -3,7 +3,7 @@ name: Sync Hevy to Garmin
 on:
   schedule:
     - cron: '0 */2 * * *' # Executa a cada 2 horas
-  workflow_dispatch: # Permite disparar o botão manual
+  workflow_dispatch: # Botão manual
 
 jobs:
   sync:
@@ -17,19 +17,31 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install hevy2garmin
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install hevy2garmin
+          pip install hevy2garmin garminconnect
 
-      - name: Run Sync
+      - name: Configure and Run Sync
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           GARMIN_TOKEN: ${{ secrets.GARMIN_TOKEN }}
         run: |
+          # 1. Configurar o diretório e credenciais da Garmin
           mkdir -p ~/.garminconnect
-          # Grava o token do secret para a pasta da biblioteca
+          echo "$GARMIN_TOKEN" > ~/.garminconnect/garmin_tokens.json
           echo "$GARMIN_TOKEN" > ~/.garminconnect/oauth2_token.json
+
+          # 2. Configurar a pasta e chave de API do Hevy
+          mkdir -p ~/.hevy2garmin
+          python -c "
+          import json, os
+          config = {'hevy_api_key': os.environ.get('HEVY_API_KEY', '')}
+          with open(os.path.expanduser('~/.hevy2garmin/config.json'), 'w') as f:
+              json.dump(config, f)
+          "
+
+          # 3. Executar a sincronização
           hevy2garmin sync
